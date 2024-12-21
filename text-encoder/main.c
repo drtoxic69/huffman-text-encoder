@@ -5,6 +5,8 @@
 #define MAX_TREE_HT 100
 #define MAX_STRING_LENGTH 1000
 #define MAX_CHARS 256
+#define LEFT_CHILD 0
+#define RIGHT_CHILD 1
 
 struct MinHeapNode {
     char data;
@@ -85,13 +87,94 @@ void buildMinHeap(struct MinHeap* minHeap) {
         minHeapify(minHeap, i);
 }
 
+void printLine(char c, int length) {
+    for (int i = 0; i < length; i++) {
+        printf("%c", c);
+    }
+    printf("\n");
+}
+
 void printArr(int arr[], int n) {
-    for (int i = 0; i < n; ++i)
-        printf("%d", arr[i]);
+    for (int i = 0; i < n; ++i) {
+        printf("\033[1;36m%d\033[0m", arr[i]); // Cyan color for binary digits
+    }
 }
 
 int isLeaf(struct MinHeapNode* root) {
     return !(root->left) && !(root->right);
+}
+
+#define BOX_WIDTH 70
+#define LEFT_CHILD 0
+#define RIGHT_CHILD 1
+
+// Unicode box drawing characters
+// ASCII box drawing characters
+#define TOP_LEFT "+"
+#define TOP_RIGHT "+"
+#define BOTTOM_LEFT "+"
+#define BOTTOM_RIGHT "+"
+#define HORIZONTAL "-"
+#define VERTICAL "|"
+#define T_RIGHT "+"
+#define T_LEFT "+"
+#define VERTICAL_SPLIT "+"
+#define HORIZONTAL_SPLIT "-"
+
+// Function to print a horizontal line with ASCII characters
+void printHorizontalLine(const char* left, const char* middle, const char* right, const char* fill) {
+    printf("%s", left);
+    for (int i = 0; i < BOX_WIDTH - 2; i++) {
+        printf("%s", fill);
+    }
+    printf("%s\n", right);
+}
+
+// Function to display a cleaner ASCII box
+void printCodes(struct MinHeapNode* root, int arr[], size_t arr_size, int top) {
+    static int first_call = 1;
+    
+    if (!root) return;
+    
+    if (top >= arr_size) {
+        fprintf(stderr, "Error: Buffer overflow detected.\n");
+        return;
+    }
+
+    // Print header on first call
+    if (first_call) {
+        printf("\n============== HUFFMAN CODES TABLE =============\n\n");
+        first_call = 0;
+    }
+
+    if (root->left) {
+        arr[top] = LEFT_CHILD;
+        printCodes(root->left, arr, arr_size, top + 1);
+    }
+    
+    if (root->right) {
+        arr[top] = RIGHT_CHILD;
+        printCodes(root->right, arr, arr_size, top + 1);
+    }
+    
+    if (isLeaf(root)) {
+        // Print character info in a clean format
+        printf("Character: '%c' |   Code:   ", root->data);
+        
+        // Print the Huffman code
+        for (int i = 0; i < top; i++) {
+            printf("%d", arr[i]);
+        }
+        
+        // Print frequency
+        printf(" | Frequency: %-2d\n", root->freq);
+        
+    }
+
+    // Reset first_call flag when we're done
+    if (root == NULL || (isLeaf(root) && !root->left && !root->right)) {
+        first_call = 1;
+    }
 }
 
 struct MinHeap* createAndBuildMinHeap(char data[], int freq[], int size) {
@@ -118,8 +201,18 @@ struct MinHeapNode* buildHuffmanTree(char data[], int freq[], int size) {
     return extractMin(minHeap);
 }
 
+void HuffmanCodes(char data[], int freq[], int size) {
+    struct MinHeapNode* root = buildHuffmanTree(data, freq, size);
+    int arr[MAX_TREE_HT], top = 0;
+    
+    printf("\n================================================\n");
+    printf("            HUFFMAN CODES FOR EACH CHARACTER            \n");
+    printf("================================================\n");
+    printCodes(root, arr, MAX_TREE_HT, top);
+}
+
 void getHuffmanCode(struct MinHeapNode* root, char c, int arr[], int* arrTop, int* found) {
-    if (root == NULL) return;
+    if (!root) return;
 
     if (isLeaf(root) && root->data == c) {
         *found = 1;
@@ -127,7 +220,7 @@ void getHuffmanCode(struct MinHeapNode* root, char c, int arr[], int* arrTop, in
     }
 
     if (root->left) {
-        arr[*arrTop] = 0;
+        arr[*arrTop] = LEFT_CHILD;
         (*arrTop)++;
         getHuffmanCode(root->left, c, arr, arrTop, found);
         if (*found) return;
@@ -135,7 +228,7 @@ void getHuffmanCode(struct MinHeapNode* root, char c, int arr[], int* arrTop, in
     }
 
     if (root->right) {
-        arr[*arrTop] = 1;
+        arr[*arrTop] = RIGHT_CHILD;
         (*arrTop)++;
         getHuffmanCode(root->right, c, arr, arrTop, found);
         if (*found) return;
@@ -144,13 +237,24 @@ void getHuffmanCode(struct MinHeapNode* root, char c, int arr[], int* arrTop, in
 }
 
 void encodeString(struct MinHeapNode* root, const char* input) {
-    printf("Encoded string: ");
+    printf("\n================================================\n");
+    printf("                  ENCODED MESSAGE                  \n");
+    printf("================================================\n");
+    printf("\nOriginal text: %s\n", input);
+    printf("Encoded bits: ");
+    
     for (int i = 0; input[i] != '\0'; i++) {
         int arr[MAX_TREE_HT], arrTop = 0, found = 0;
         getHuffmanCode(root, input[i], arr, &arrTop, &found);
-        printArr(arr, arrTop);
+        
+        if (found) {
+            for (int j = 0; j < arrTop; j++) {
+                printf("%d", arr[j]);
+            }
+        }
     }
-    printf("\n");
+    printf("\n\n");
+    printf("================================================\n");
 }
 
 void calculateFrequency(const char* str, char* data, int* freq, int* size) {
@@ -171,39 +275,27 @@ void calculateFrequency(const char* str, char* data, int* freq, int* size) {
     }
 }
 
-void printCodes(struct MinHeapNode* root, int arr[], int top) {
-    if (root->left) {
-        arr[top] = 0;
-        printCodes(root->left, arr, top + 1);
-    }
-    if (root->right) {
-        arr[top] = 1;
-        printCodes(root->right, arr, top + 1);
-    }
-    if (isLeaf(root)) {
-        printf("%c: ", root->data);
-        printArr(arr, top);
-        printf("\n");
-    }
-}
-
-void HuffmanCodes(char data[], int freq[], int size) {
-    struct MinHeapNode* root = buildHuffmanTree(data, freq, size);
-    int arr[MAX_TREE_HT], top = 0;
-    printf("\nHuffman Codes for each character:\n\n");
-    printCodes(root, arr, top);
-    printf("\n");
-}
-
 int main() {
     char input[MAX_STRING_LENGTH];
     char data[MAX_CHARS];
     int freq[MAX_CHARS];
     int size = 0;
 
+    printf("\n================================================\n");
+    printf("            HUFFMAN ENCODING PROGRAM               \n");
+    printf("================================================\n\n");
+    
     printf("Enter a string to encode: ");
-    fgets(input, MAX_STRING_LENGTH, stdin);
+    if (fgets(input, MAX_STRING_LENGTH, stdin) == NULL) {
+        printf("Error reading input!\n");
+        return 1;
+    }
     input[strcspn(input, "\n")] = 0;
+
+    if (strlen(input) == 0) {
+        printf("Error: Empty input string!\n");
+        return 1;
+    }
 
     calculateFrequency(input, data, freq, &size);
     struct MinHeapNode* root = buildHuffmanTree(data, freq, size);
